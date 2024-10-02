@@ -1,2 +1,4 @@
 /pdap
 .env
+/drafts
+data/*

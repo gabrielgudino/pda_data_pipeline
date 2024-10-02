@@ -5,3 +5,4 @@ requests==2.32.3
 SQLAlchemy==1.4.53
 sqlalchemy-redshift==0.8.14
 python-dotenv==1.0.1
+
