@@ -10,5 +10,6 @@ CREATE TABLE date_dim (
     quarter INT,                    -- Trimestre (1-4)
     year INT,                       -- Año (2024, 2025, etc.)
     is_weekend BOOLEAN,             -- Indica si es fin de semana (TRUE si es sábado o domingo)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (date_id)
 );

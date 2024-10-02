@@ -30,6 +30,7 @@ CREATE TABLE weather_fact (
     uv DECIMAL(5,2),
     gust_mph DECIMAL(5,2),
     gust_kph DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (weather_id),
     FOREIGN KEY (location_id) REFERENCES location_dim(location_id),
     FOREIGN KEY (time_id) REFERENCES time_dim(time_id),

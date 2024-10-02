@@ -4,7 +4,8 @@ CREATE TABLE location_dim (
     region_id BIGINT NOT NULL, 
     lat DECIMAL(9,6), 
     lon DECIMAL(9,6), 
-    tz_id VARCHAR(255), 
+    tz_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (location_id),
     FOREIGN KEY (region_id) REFERENCES region_dim(region_id)
 );
