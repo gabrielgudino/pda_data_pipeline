@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import requests
 import json
 import pandas as pd
-import boto3
+# import boto3
 
 
 load_dotenv()

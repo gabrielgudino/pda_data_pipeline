@@ -14,7 +14,7 @@ REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
 REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")  # El esquema deseado, 'public' como valor por defecto
 
 # Ruta a la carpeta que contiene los scripts SQL
-SQL_DIR = "../sql"
+SQL_DIR = "./sql"
 
 # Lista con el orden correcto de los archivos SQL
 sql_files = [
