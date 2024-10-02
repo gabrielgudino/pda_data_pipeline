@@ -1,7 +1,6 @@
 CREATE TABLE weather_fact (
     weather_id BIGINT IDENTITY(1,1), 
-    location_id BIGINT NOT NULL,     
-    time_id BIGINT NOT NULL,         
+    location_id BIGINT NOT NULL,              
     condition_id BIGINT NOT NULL,    
     date_id BIGINT NOT NULL,         
     temp_c DECIMAL(5,2),
@@ -33,7 +32,6 @@ CREATE TABLE weather_fact (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (weather_id),
     FOREIGN KEY (location_id) REFERENCES location_dim(location_id),
-    FOREIGN KEY (time_id) REFERENCES time_dim(time_id),
     FOREIGN KEY (condition_id) REFERENCES condition_dim(condition_id),
     FOREIGN KEY (date_id) REFERENCES date_dim(date_id) 
 );
