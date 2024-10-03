@@ -49,13 +49,18 @@ def get_locations_from_files():
             with open(file_path, 'r') as file:
                 data = json.load(file)
                 location_name = data['location']['name']
-                region = data['location']['region']
+                region = data['location'].get('region', location_name)  # Usar location_name si region está vacío
+                
+                # Verificar si el campo region está vacío o es nulo
+                if not region:
+                    region = location_name
+                
                 lat = data['location']['lat']
                 lon = data['location']['lon']
                 tz_id = data['location']['tz_id']
                 
                 # Añadir la ubicación si no está vacía
-                if location_name and region:
+                if location_name:
                     locations.add((location_name, region, lat, lon, tz_id))
 
     return locations

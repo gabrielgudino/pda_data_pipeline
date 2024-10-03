@@ -49,7 +49,12 @@ def get_regions_from_files():
             with open(file_path, 'r') as file:
                 data = json.load(file)
                 country = data['location']['country']
-                region = data['location']['region']
+                region = data['location'].get('region')  # Obtener el campo 'region'
+                location_name = data['location']['name']  # Obtener el location_name
+
+                # Si la región está vacía o es nula, usar location_name
+                if not region:
+                    region = location_name
                 
                 # Añadir la región y el país si no están vacíos
                 if region and country:
