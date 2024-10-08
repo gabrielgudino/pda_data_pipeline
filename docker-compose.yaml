@@ -1,7 +1,6 @@
 ---
 x-airflow-common:
   &airflow-common
-  # Cambia la línea de la imagen para construir desde tu Dockerfile
   build:
     context: .
     dockerfile: Dockerfile
@@ -17,6 +16,8 @@ x-airflow-common:
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+  env_file:
+    - .env  # Ahora apunta al archivo .env en el directorio raíz
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
@@ -24,7 +25,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts  # Volumen para los scripts
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data        # Volumen para los datos
-  user: "${AIRFLOW_UID:-50000}:0"
+  user: "0:0"  # Ejecutar los servicios como root
   depends_on:
     &airflow-common-depends-on
     redis:
@@ -47,6 +48,7 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    user: "0:0"  # Ejecutar como root
 
   redis:
     image: redis:7.2-bookworm
@@ -59,6 +61,7 @@ services:
       retries: 50
       start_period: 30s
     restart: always
+    user: "0:0"  # Ejecutar como root
 
   airflow-webserver:
     <<: *airflow-common
@@ -76,6 +79,7 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    user: "0:0"  # Ejecutar como root
 
   airflow-scheduler:
     <<: *airflow-common
@@ -91,6 +95,7 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    user: "0:0"  # Ejecutar como root
 
   airflow-worker:
     <<: *airflow-common
@@ -111,6 +116,7 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    user: "0:0"  # Ejecutar como root
 
   airflow-triggerer:
     <<: *airflow-common
@@ -126,6 +132,7 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    user: "0:0"  # Ejecutar como root
 
   airflow-init:
     <<: *airflow-common
@@ -134,7 +141,7 @@ services:
       - -c
       - |
         mkdir -p /sources/logs /sources/dags /sources/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        chown -R "0:0" /sources/{logs,dags,plugins}
         exec /entrypoint airflow version
     environment:
       <<: *airflow-common-env
@@ -142,7 +149,7 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-    user: "0:0"
+    user: "0:0"  # Ejecutar como root
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
 
@@ -164,6 +171,7 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    user: "0:0"  # Ejecutar como root
 
 volumes:
   postgres-db-volume:

@@ -16,7 +16,7 @@ with DAG(
     'etl_dag',
     default_args=default_args,
     description='ETL para cargar datos en Redshift',
-    schedule_interval='*/10 * * * *', # schedule_interval='0 */4 * * *',  # Corre cada 4 horas de manera continua
+    schedule_interval='*/10 * * * *',  # Corre cada 10 minutos
     catchup=False,
 ) as dag:
 
@@ -24,6 +24,13 @@ with DAG(
     def run_script(script_name):
         script_path = f'/opt/airflow/scripts/{script_name}'
         subprocess.run(['python', script_path], check=True)
+
+    # Nueva tarea para ejecutar el script ingest.py
+    ingest_data = PythonOperator(
+        task_id='ingest_data',
+        python_callable=run_script,
+        op_args=['ingest.py'],
+    )
 
     # Tareas para cargar las dimensiones
     load_country_dim = PythonOperator(
@@ -63,4 +70,6 @@ with DAG(
     )
 
     # Definir el orden de las tareas de acuerdo al modelo dimensional
-    load_country_dim >> load_region_dim >> load_location_dim >> load_condition_dim >> load_date_dim >> load_weather_fact
+    # Primero se ejecuta ingest_data, luego las demás tareas
+    ingest_data >> load_country_dim >> load_region_dim >> load_location_dim >> load_condition_dim >> load_date_dim >> load_weather_fact
+

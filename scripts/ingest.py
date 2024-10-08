@@ -7,12 +7,12 @@ import pandas as pd
 # import boto3
 
 
-load_dotenv()
+# load_dotenv()
 
 CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-","_")
 
 
-WORK_DIR = os.getenv("WORK_DIR")
+WORK_DIR = os.getenv("WORK_DIR", "/opt/airflow")
 
 def extract_weather_data(locations):
     """
