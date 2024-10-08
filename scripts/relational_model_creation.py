@@ -22,7 +22,6 @@ sql_files = [
     "region_dim.sql",
     "location_dim.sql",
     "condition_dim.sql",
-    "time_dim.sql",
     "date_dim.sql",
     "weather_fact.sql"
 ]
