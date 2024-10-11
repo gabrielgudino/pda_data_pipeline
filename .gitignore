@@ -4,3 +4,8 @@
 data/*
 prueba.ipynb
 logs/*
+.pytest_cache/*
+/scripts/__pycache__/*
+/tests/__pycache__/*
+/dags/__pycache__/*
+/dags/.pytest_cache/*

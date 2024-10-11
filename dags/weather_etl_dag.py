@@ -71,5 +71,5 @@ with DAG(
 
     # Definir el orden de las tareas de acuerdo al modelo dimensional
     # Primero se ejecuta ingest_data, luego las demás tareas
-    ingest_data >> load_country_dim >> load_region_dim >> load_location_dim >> load_condition_dim >> load_date_dim >> load_weather_fact
-
+    ingest_data >> load_country_dim >> load_region_dim >> load_location_dim \
+                >> load_condition_dim >> load_date_dim >> load_weather_fact
