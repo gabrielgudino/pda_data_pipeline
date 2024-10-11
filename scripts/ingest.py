@@ -2,6 +2,10 @@ import datetime
 import os
 import requests
 import psycopg2
+from dotenv import load_dotenv
+
+# Cargar el archivo .env
+load_dotenv()
 
 # Conexión a Redshift
 REDSHIFT_HOST = os.getenv("REDSHIFT_HOST")
@@ -10,6 +14,10 @@ REDSHIFT_DB = os.getenv("REDSHIFT_DB")
 REDSHIFT_USER = os.getenv("REDSHIFT_USER")
 REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
 REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
+
+# Obtener las claves API desde el archivo .env
+API_KEY = os.getenv("API_KEY")
+API_HOST = os.getenv("API_HOST")
 
 CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-", "_")
 
@@ -32,8 +40,8 @@ def extract_weather_data(locations):
         url = f"https://weatherapi-com.p.rapidapi.com/current.json?q={location}&lang=en"
 
         headers = {
-            "X-RapidAPI-Key": "24cc538b51msh9dd38f0d1f4fd7ap150793jsn82c69f528d4e",
-            "X-RapidAPI-Host": "weatherapi-com.p.rapidapi.com"
+            "X-RapidAPI-Key": API_KEY,
+            "X-RapidAPI-Host": API_HOST
         }
 
         response = requests.get(url, headers=headers)

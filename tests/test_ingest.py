@@ -1,5 +1,15 @@
+import os
 from unittest.mock import patch, Mock
+from dotenv import load_dotenv
 from scripts.ingest import extract_weather_data
+
+
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
+
+# Obtener las claves API desde las variables de entorno
+API_KEY = os.getenv("API_KEY")
+API_HOST = os.getenv("API_HOST")
 
 
 @patch('psycopg2.connect')  # Simular la conexión a Redshift
@@ -59,8 +69,7 @@ def test_extract_weather_data(mock_get, mock_connect):
     # Verificar que la API fue llamada correctamente
     mock_get.assert_called_once_with(
         "https://weatherapi-com.p.rapidapi.com/current.json?q=Cordoba&lang=en",
-        headers={'X-RapidAPI-Key': '24cc538b51msh9dd38f0d1f4fd7ap150793jsn82c69f528d4e',
-                 'X-RapidAPI-Host': 'weatherapi-com.p.rapidapi.com'}
+        headers={'X-RapidAPI-Key': API_KEY, 'X-RapidAPI-Host': API_HOST}
     )
 
     # Verificar que los valores de la consulta SQL son correctos
