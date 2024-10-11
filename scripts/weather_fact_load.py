@@ -19,7 +19,7 @@ REDSHIFT_PORT = os.getenv("REDSHIFT_PORT", "5439")
 REDSHIFT_DB = os.getenv("REDSHIFT_DB")
 REDSHIFT_USER = os.getenv("REDSHIFT_USER")
 REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
-REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")  # El esquema deseado, 'public' como valor por defecto
+REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
 
 # Conectar a Redshift usando psycopg2
 conn = psycopg2.connect(
@@ -36,7 +36,10 @@ cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
 conn.commit()  # Hacer commit del cambio de search_path
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
+
 # Función para extraer datos de los archivos y cargar en weather_fact
+
+
 def load_weather_data():
     for filename in os.listdir(DATA_DIR):
         if filename.endswith('.txt'):
@@ -78,54 +81,78 @@ def load_weather_data():
                 gust_kph = data['current']['gust_kph']
 
                 # Convertir last_updated_epoch a fecha
-                last_updated_date = datetime.datetime.utcfromtimestamp(last_updated_epoch).date()
+                last_updated_date = datetime.datetime.\
+                    utcfromtimestamp(last_updated_epoch).date()
 
                 # Obtener el date_id desde la tabla date_dim
-                cursor.execute("SELECT date_id FROM date_dim WHERE date = %s", (last_updated_date,))
+                cursor.execute("""SELECT date_id
+                               FROM date_dim
+                               WHERE date = %s
+                               """, (last_updated_date,))
                 date_result = cursor.fetchone()
                 if date_result:
                     date_id = date_result[0]
                 else:
-                    print(f"No se encontró un date_id para la fecha {last_updated_date}. Saltando registro.")
+                    print(f"""No se encontró un date_id para la fecha
+                          {last_updated_date}. Saltando registro.""")
                     continue
 
-                # Obtener location_id desde location_dim (suponiendo que el nombre de la ubicación es único)
-                cursor.execute("SELECT location_id FROM location_dim WHERE location_name = %s", (location_name,))
+                # Obtener location_id desde location_dim
+                # (suponiendo que el nombre de la ubicación es único)
+                cursor.execute("""
+                               SELECT location_id
+                               FROM location_dim
+                               WHERE location_name = %s
+                               """, (location_name,))
                 location_result = cursor.fetchone()
                 if location_result:
                     location_id = location_result[0]
                 else:
-                    print(f"No se encontró un location_id para la ubicación {location_name}. Saltando registro.")
+                    print(f"""No se encontró un location_id para la ubicación
+                          {location_name}. Saltando registro.""")
                     continue
 
                 # Obtener condition_id desde condition_dim
-                cursor.execute("SELECT condition_id FROM condition_dim WHERE condition_code = %s", (condition_code,))
+                cursor.execute("""
+                               SELECT condition_id
+                               FROM condition_dim
+                               WHERE condition_code = %s
+                               """, (condition_code,))
                 condition_result = cursor.fetchone()
                 if condition_result:
                     condition_id = condition_result[0]
                 else:
-                    print(f"No se encontró un condition_id para el código {condition_code}. Saltando registro.")
+                    print(f"""No se encontró un condition_id para el código
+                          {condition_code}. Saltando registro.""")
                     continue
 
                 # Insertar en weather_fact
                 cursor.execute("""
-                    INSERT INTO weather_fact (location_id, condition_id, date_id, temp_c, temp_f, is_day, wind_mph, wind_kph,
-                                              wind_degree, wind_dir, pressure_mb, pressure_in, precip_mm, precip_in, humidity, 
-                                              cloud, feelslike_c, feelslike_f, windchill_c, windchill_f, heatindex_c, heatindex_f, 
-                                              dewpoint_c, dewpoint_f, vis_km, vis_miles, uv, gust_mph, gust_kph)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    location_id, condition_id, date_id, temp_c, temp_f, is_day, wind_mph, wind_kph, wind_degree, wind_dir, 
-                    pressure_mb, pressure_in, precip_mm, precip_in, humidity, cloud, feelslike_c, feelslike_f, windchill_c, 
-                    windchill_f, heatindex_c, heatindex_f, dewpoint_c, dewpoint_f, vis_km, vis_miles, uv, gust_mph, gust_kph
+                    INSERT INTO weather_fact (location_id, condition_id,
+                    date_id, temp_c, temp_f, is_day, wind_mph, wind_kph,
+                    wind_degree, wind_dir, pressure_mb, pressure_in,
+                    precip_mm, precip_in, humidity, cloud, feelslike_c,
+                    feelslike_f, windchill_c, windchill_f, heatindex_c,
+                    heatindex_f, dewpoint_c, dewpoint_f, vis_km,
+                    vis_miles, uv, gust_mph, gust_kph)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s)""", (
+                    location_id, condition_id, date_id, temp_c, temp_f,
+                    is_day, wind_mph, wind_kph, wind_degree, wind_dir,
+                    pressure_mb, pressure_in, precip_mm, precip_in,
+                    humidity, cloud, feelslike_c, feelslike_f, windchill_c,
+                    windchill_f, heatindex_c, heatindex_f, dewpoint_c,
+                    dewpoint_f, vis_km, vis_miles, uv, gust_mph, gust_kph
                 ))
 
     conn.commit()
 
+
 if __name__ == "__main__":
     load_weather_data()
     print("Datos meteorológicos cargados en weather_fact exitosamente.")
-    
+
 # Cerrar la conexión
 cursor.close()
 conn.close()

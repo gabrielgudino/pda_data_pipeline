@@ -1,7 +1,6 @@
 import datetime
 import os
 import requests
-import json
 import psycopg2
 
 # Conexión a Redshift
@@ -14,7 +13,10 @@ REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
 
 CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-", "_")
 
+
 # Función para extraer datos meteorológicos y cargarlos en Redshift
+
+
 def extract_weather_data(locations):
     # Conexión a Redshift
     conn = psycopg2.connect(
@@ -44,14 +46,16 @@ def extract_weather_data(locations):
         # Preparar los datos para insertarlos en Redshift
         insert_query = f"""
         INSERT INTO "{REDSHIFT_SCHEMA}".weather_staging (
-            location_name, region, country, lat, lon, tz_id, localtime_epoch, local_time,
-            last_updated_epoch, last_updated, temp_c, temp_f, is_day, condition_text, 
-            wind_mph, wind_kph, wind_degree, wind_dir, pressure_mb, precip_mm, humidity,
-            cloud, feelslike_c, feelslike_f, dewpoint_c, dewpoint_f, visibility_km,
-            visibility_miles, uv_index, gust_mph, gust_kph, inserted_at
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, GETDATE()
+            location_name, region, country, lat, lon, tz_id,
+            localtime_epoch, local_time, last_updated_epoch,
+            last_updated, temp_c, temp_f, is_day, condition_text,
+            wind_mph, wind_kph, wind_degree, wind_dir, pressure_mb,
+            precip_mm, humidity, cloud, feelslike_c, feelslike_f,
+            dewpoint_c, dewpoint_f, visibility_km, visibility_miles,
+            uv_index, gust_mph, gust_kph, inserted_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, GETDATE()
         )
         """
 
@@ -62,12 +66,15 @@ def extract_weather_data(locations):
             location_data['localtime_epoch'], location_data['localtime'],
             current_data['last_updated_epoch'], current_data['last_updated'],
             current_data['temp_c'], current_data['temp_f'], current_data['is_day'],
-            current_data['condition']['text'], current_data['wind_mph'], current_data['wind_kph'],
-            current_data['wind_degree'], current_data['wind_dir'], current_data['pressure_mb'],
-            current_data['precip_mm'], current_data['humidity'], current_data['cloud'],
-            current_data['feelslike_c'], current_data['feelslike_f'], current_data['dewpoint_c'],
-            current_data['dewpoint_f'], current_data['vis_km'], current_data['vis_miles'],
-            current_data['uv'], current_data['gust_mph'], current_data['gust_kph']
+            current_data['condition']['text'], current_data['wind_mph'],
+            current_data['wind_kph'], current_data['wind_degree'],
+            current_data['wind_dir'], current_data['pressure_mb'],
+            current_data['precip_mm'], current_data['humidity'],
+            current_data['cloud'], current_data['feelslike_c'],
+            current_data['feelslike_f'], current_data['dewpoint_c'],
+            current_data['dewpoint_f'], current_data['vis_km'],
+            current_data['vis_miles'], current_data['uv'],
+            current_data['gust_mph'], current_data['gust_kph']
         )
 
         # Ejecutar la inserción en Redshift

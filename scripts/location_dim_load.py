@@ -19,7 +19,7 @@ REDSHIFT_PORT = os.getenv("REDSHIFT_PORT", "5439")
 REDSHIFT_DB = os.getenv("REDSHIFT_DB")
 REDSHIFT_USER = os.getenv("REDSHIFT_USER")
 REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
-REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")  # El esquema deseado, 'public' como valor por defecto
+REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
 
 # Conectar a Redshift usando psycopg2
 conn = psycopg2.connect(
@@ -36,7 +36,10 @@ cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
 conn.commit()  # Hacer commit del cambio de search_path
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
+
 # Función para extraer las ubicaciones de los archivos
+
+
 def get_locations_from_files():
     locations = set()  # Usamos un set para evitar duplicados
 
@@ -44,41 +47,42 @@ def get_locations_from_files():
     for filename in os.listdir(DATA_DIR):
         if filename.endswith('.txt'):
             file_path = os.path.join(DATA_DIR, filename)
-            
             # Abrir y leer el archivo
             with open(file_path, 'r') as file:
                 data = json.load(file)
                 location_name = data['location']['name']
-                region = data['location'].get('region', location_name)  # Usar location_name si region está vacío
-                
+                region = data['location'].get('region', location_name)
                 # Verificar si el campo region está vacío o es nulo
                 if not region:
                     region = location_name
-                
                 lat = data['location']['lat']
                 lon = data['location']['lon']
                 tz_id = data['location']['tz_id']
-                
                 # Añadir la ubicación si no está vacía
                 if location_name:
                     locations.add((location_name, region, lat, lon, tz_id))
 
     return locations
 
+
 # Función para insertar ubicaciones en la tabla location_dim
+
+
 def insert_locations_into_location_dim(locations):
     for location_name, region, lat, lon, tz_id in locations:
         # Verificar si la región ya existe en la tabla region_dim
-        cursor.execute("SELECT region_id FROM region_dim WHERE region_name = %s", (region,))
+        cursor.execute("""
+                       SELECT region_id FROM region_dim WHERE region_name = %s
+                       """, (region,))
         region_result = cursor.fetchone()
-
         if region_result is not None:
             region_id = region_result[0]  # Obtener el ID de la región
-
             # Verificar si la ubicación ya existe en la tabla location_dim
-            cursor.execute("SELECT location_id FROM location_dim WHERE location_name = %s AND region_id = %s", (location_name, region_id))
+            cursor.execute("""
+                           SELECT location_id FROM location_dim
+                           WHERE location_name = %s AND region_id = %s
+                           """, (location_name, region_id))
             location_result = cursor.fetchone()
-
             # Si la ubicación no existe, insertarla
             if location_result is None:
                 cursor.execute("""
@@ -89,16 +93,19 @@ def insert_locations_into_location_dim(locations):
             else:
                 print(f"Ubicación ya existente: {location_name} (Región: {region})")
         else:
-            print(f"Región no encontrada para la ubicación {location_name}. Inserta la región primero: {region}")
+            print(f"""
+                  Región no encontrada para la ubicación {location_name}.
+                  Inserta la región primero: {region}""")
 
     # Hacer commit para guardar los cambios
     conn.commit()
+
 
 if __name__ == "__main__":
     locations = get_locations_from_files()
     insert_locations_into_location_dim(locations)
     print("Proceso de carga de ubicaciones completado.")
-    
+
 # Cerrar la conexión
 cursor.close()
 conn.close()

@@ -19,7 +19,7 @@ REDSHIFT_PORT = os.getenv("REDSHIFT_PORT", "5439")
 REDSHIFT_DB = os.getenv("REDSHIFT_DB")
 REDSHIFT_USER = os.getenv("REDSHIFT_USER")
 REDSHIFT_PASSWORD = os.getenv("REDSHIFT_PASSWORD")
-REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")  # El esquema deseado, 'public' como valor por defecto
+REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
 
 # Conectar a Redshift usando psycopg2
 conn = psycopg2.connect(
@@ -36,7 +36,10 @@ cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
 conn.commit()  # Hacer commit del cambio de search_path
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
+
 # Función para extraer las condiciones climáticas de los archivos
+
+
 def get_conditions_from_files():
     conditions = set()  # Usamos un set para evitar duplicados
 
@@ -44,45 +47,54 @@ def get_conditions_from_files():
     for filename in os.listdir(DATA_DIR):
         if filename.endswith('.txt'):
             file_path = os.path.join(DATA_DIR, filename)
-            
             # Abrir y leer el archivo
             with open(file_path, 'r') as file:
                 data = json.load(file)
                 condition_text = data['current']['condition']['text']
                 condition_icon = data['current']['condition']['icon']
                 condition_code = data['current']['condition']['code']
-                
                 # Añadir la condición si los campos no están vacíos
                 if condition_text and condition_icon and condition_code:
                     conditions.add((condition_text, condition_icon, condition_code))
 
     return conditions
 
+
 # Función para insertar condiciones en la tabla condition_dim
+
+
 def insert_conditions_into_condition_dim(conditions):
     for condition_text, condition_icon, condition_code in conditions:
         # Verificar si la condición ya existe en la tabla condition_dim
-        cursor.execute("SELECT condition_id FROM condition_dim WHERE condition_code = %s", (condition_code,))
+        cursor.execute(
+            "SELECT condition_id FROM condition_dim WHERE condition_code = %s",
+            (condition_code,)
+        )
         condition_result = cursor.fetchone()
 
         # Si la condición no existe, insertarla
         if condition_result is None:
             cursor.execute("""
-                INSERT INTO condition_dim (condition_text, condition_icon, condition_code)
-                VALUES (%s, %s, %s)
+            INSERT INTO condition_dim (condition_text, condition_icon, condition_code)
+            VALUES (%s, %s, %s)
             """, (condition_text, condition_icon, condition_code))
-            print(f"Condición insertada: {condition_text} (Código: {condition_code})")
+            print(
+                f"Condición insertada: {condition_text} (Código: {condition_code})"
+                )
         else:
-            print(f"Condición ya existente: {condition_text} (Código: {condition_code})")
+            print(
+                f"Condición ya existente: {condition_text} (Código: {condition_code})"
+                )
 
     # Hacer commit para guardar los cambios
     conn.commit()
+
 
 if __name__ == "__main__":
     conditions = get_conditions_from_files()
     insert_conditions_into_condition_dim(conditions)
     print("Proceso de carga de condiciones completado.")
-    
+
 # Cerrar la conexión
 cursor.close()
 conn.close()
