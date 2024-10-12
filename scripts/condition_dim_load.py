@@ -76,9 +76,11 @@ def insert_conditions_into_condition_dim(conditions):
             INSERT INTO condition_dim (condition_text, condition_icon, condition_code)
             VALUES (%s, %s, %s)
             """, (condition_text, condition_icon, condition_code))
-            print(f"Condición insertada: {condition_text} (Código: {condition_code})")
+            print(f"""Condición insertada: {condition_text}
+                  (Código: {condition_code})""")
         else:
-            print(f"Condición ya existente: {condition_text} (Código: {condition_code})")
+            print(f"""Condición ya existente: {condition_text}
+                  (Código: {condition_code})""")
 
     # Hacer commit para guardar los cambios
     conn.commit()

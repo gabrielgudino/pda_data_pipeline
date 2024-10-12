@@ -36,9 +36,11 @@ print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 def get_regions_from_staging():
     regions = set()  # Usamos un set para evitar duplicados
 
-    # Consulta para obtener las regiones y países de los registros insertados en los últimos 30 minutos
+    # Consulta para obtener las regiones y países de los registros insertados
     query = """
-    SELECT DISTINCT location_name, COALESCE(NULLIF(region, ''), location_name) AS region, country
+    SELECT DISTINCT location_name,
+    COALESCE(NULLIF(region, ''), location_name) AS region,
+    country
     FROM weather_staging
     WHERE created_at >= dateadd(minute, -30, GETDATE());
     """
@@ -48,8 +50,7 @@ def get_regions_from_staging():
 
     # Añadir las regiones y países al set
     for row in results:
-        location_name = row[0]
-        region = row[1]  
+        region = row[1]
         country = row[2]
 
         if region and country:
@@ -87,7 +88,8 @@ def insert_regions_into_region_dim(regions):
             else:
                 print(f"Región ya existente: {region} (País: {country})")
         else:
-            print(f"País no encontrado para la región {region}. Inserta el país primero: {country}")
+            print(f"""País no encontrado para la región {region}.
+                  Inserta el país primero: {country}""")
 
     # Hacer commit para guardar los cambios
     conn.commit()

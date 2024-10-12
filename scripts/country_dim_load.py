@@ -33,17 +33,19 @@ cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
 conn.commit()
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
+
 # Función para obtener los países únicos desde la tabla de staging
+
+
 def get_countries_from_staging():
     countries = set()  # Usamos un set para evitar duplicados
 
-    # Consulta para obtener los países de los registros insertados en los últimos 30 minutos
+    # Consulta para obtener los países de los registros insertados
     query = """
     SELECT DISTINCT country
     FROM weather_staging
     WHERE created_at >= dateadd(minute, -30, GETDATE());
     """
-    
     cursor.execute(query)
     results = cursor.fetchall()
 
@@ -55,7 +57,10 @@ def get_countries_from_staging():
 
     return countries
 
+
 # Función para insertar países en la tabla country_dim
+
+
 def insert_countries_into_country_dim(countries):
     for country in countries:
         # Verificar si el país ya existe en la tabla
@@ -75,6 +80,7 @@ def insert_countries_into_country_dim(countries):
 
     # Hacer commit para guardar los cambios
     conn.commit()
+
 
 # Proceso principal
 if __name__ == "__main__":

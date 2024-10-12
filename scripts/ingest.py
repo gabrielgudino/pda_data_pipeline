@@ -47,12 +47,16 @@ def extract_weather_data(location):
         current_data['condition']['text'], current_data['condition']['icon'],
         current_data['condition']['code'],
         current_data['wind_mph'], current_data['wind_kph'], current_data['wind_degree'],
-        current_data['wind_dir'], current_data['pressure_mb'], current_data['pressure_in'],  # pressure_in agregado
-        current_data['precip_mm'], current_data['precip_in'], current_data['humidity'], current_data['cloud'],
-        current_data['feelslike_c'], current_data['feelslike_f'], current_data['windchill_c'], 
-        current_data['windchill_f'], current_data['heatindex_c'], current_data['heatindex_f'],
-        current_data['dewpoint_c'], current_data['dewpoint_f'], current_data['vis_km'],
-        current_data['vis_miles'], current_data['uv'], current_data['gust_mph'], current_data['gust_kph']
+        current_data['wind_dir'], current_data['pressure_mb'],
+        current_data['pressure_in'], current_data['precip_mm'],
+        current_data['precip_in'], current_data['humidity'], current_data['cloud'],
+        current_data['feelslike_c'], current_data['feelslike_f'],
+        current_data['windchill_c'], current_data['windchill_f'],
+        current_data['heatindex_c'], current_data['heatindex_f'],
+        current_data['dewpoint_c'], current_data['dewpoint_f'],
+        current_data['vis_km'], current_data['vis_miles'],
+        current_data['uv'], current_data['gust_mph'],
+        current_data['gust_kph']
     )
 
     return extracted_data
@@ -78,8 +82,7 @@ def load_weather_data_to_redshift(extracted_data):
     wind_dir, pressure_mb, pressure_in, precip_mm, precip_in, humidity, cloud,
     feelslike_c, feelslike_f, windchill_c, windchill_f, heatindex_c, heatindex_f,
     dewpoint_c, dewpoint_f, visibility_km, visibility_miles, uv_index,
-    gust_mph, gust_kph, created_at
-    ) 
+    gust_mph, gust_kph, created_at)
     VALUES (
     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
@@ -93,8 +96,9 @@ def load_weather_data_to_redshift(extracted_data):
     conn.close()
 
 
-
 # Función que ejecuta todo el proceso
+
+
 def run_etl(locations):
     for location in locations:
         extracted_data = extract_weather_data(location)
@@ -109,7 +113,5 @@ if __name__ == "__main__":
         "Colonia del Sacramento", "Brasilia", "Rio de Janeiro", "Natal", "Oranjestad",
         "Willemstad", "Madrid", "Moscow", "Auckland", "Casablanca", "Sydney"
     ]
-
-    
     # Ejecutar el ETL
     run_etl(locations)

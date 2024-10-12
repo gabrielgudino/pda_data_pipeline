@@ -38,7 +38,8 @@ def get_locations_from_staging():
 
     # Consulta para obtener las ubicaciones insertadas en los últimos 30 minutos
     query = """
-    SELECT DISTINCT location_name, COALESCE(NULLIF(region, ''), location_name) AS region,
+    SELECT DISTINCT location_name,
+    COALESCE(NULLIF(region, ''), location_name) AS region,
     lat, lon, tz_id
     FROM weather_staging
     WHERE created_at >= dateadd(minute, -30, GETDATE());
@@ -50,7 +51,7 @@ def get_locations_from_staging():
     # Añadir las ubicaciones al set
     for row in results:
         location_name = row[0]
-        region = row[1] or location_name  # Si no hay región, usar el nombre de la ubicación
+        region = row[1] or location_name
         lat = row[2]
         lon = row[3]
         tz_id = row[4]
@@ -89,7 +90,8 @@ def insert_locations_into_location_dim(locations):
             else:
                 print(f"Ubicación ya existente: {location_name} (Región: {region})")
         else:
-            print(f"Región no encontrada para la ubicación {location_name}. Inserta la región primero: {region}")
+            print(f"""Región no encontrada para la ubicación {location_name}.
+                  Inserta la región primero: {region}""")
 
     # Hacer commit para guardar los cambios
     conn.commit()
