@@ -1,17 +1,11 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
-import datetime
-import json
+
 
 # Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
-# Obtener la fecha actual en el formato requerido
-CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-", "_")
-
-# Directorio donde están los archivos de datos con base en la fecha actual
-DATA_DIR = f'./data/{CURRENT_DATE}'
 
 # Obtener credenciales y datos de conexión de Redshift
 REDSHIFT_HOST = os.getenv("REDSHIFT_HOST")
@@ -32,41 +26,39 @@ conn = psycopg2.connect(
 # Crear un cursor para ejecutar consultas
 cursor = conn.cursor()
 
+# Establecer el esquema
 cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
-conn.commit()  # Hacer commit del cambio de search_path
+conn.commit()
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
 
-# Función para extraer regiones y países de los archivos
-
-
-def get_regions_from_files():
+# Función para obtener las regiones y países únicos desde la tabla de staging
+def get_regions_from_staging():
     regions = set()  # Usamos un set para evitar duplicados
 
-    # Recorrer todos los archivos .txt en el directorio
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith('.txt'):
-            file_path = os.path.join(DATA_DIR, filename)
-            # Abrir y leer el archivo
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                country = data['location']['country']
-                region = data['location'].get('region')  # Obtener el campo 'region'
-                location_name = data['location']['name']  # Obtener el location_name
+    # Consulta para obtener las regiones y países de los registros insertados en los últimos 30 minutos
+    query = """
+    SELECT DISTINCT location_name, COALESCE(NULLIF(region, ''), location_name) AS region, country
+    FROM weather_staging
+    WHERE created_at >= dateadd(minute, -30, GETDATE());
+    """
 
-                # Si la región está vacía o es nula, usar location_name
-                if not region:
-                    region = location_name
-                # Añadir la región y el país si no están vacíos
-                if region and country:
-                    regions.add((region, country))
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    # Añadir las regiones y países al set
+    for row in results:
+        location_name = row[0]
+        region = row[1]  
+        country = row[2]
+
+        if region and country:
+            regions.add((region, country))
 
     return regions
 
 
 # Función para insertar regiones en la tabla region_dim
-
-
 def insert_regions_into_region_dim(regions):
     for region, country in regions:
         # Verificar si el país ya existe en la tabla country_dim
@@ -95,17 +87,20 @@ def insert_regions_into_region_dim(regions):
             else:
                 print(f"Región ya existente: {region} (País: {country})")
         else:
-            print(f"""País no encontrado para la región {region}.
-                  Inserta el país primero: {country}""")
+            print(f"País no encontrado para la región {region}. Inserta el país primero: {country}")
 
     # Hacer commit para guardar los cambios
     conn.commit()
 
 
+# Proceso principal
 if __name__ == "__main__":
-    regions = get_regions_from_files()
-    insert_regions_into_region_dim(regions)
-    print("Proceso de carga de regiones completado.")
+    regions = get_regions_from_staging()
+    if regions:
+        insert_regions_into_region_dim(regions)
+        print("Proceso de carga de regiones completado.")
+    else:
+        print("No se encontraron regiones nuevas en los últimos 30 minutos.")
 
 # Cerrar la conexión
 cursor.close()

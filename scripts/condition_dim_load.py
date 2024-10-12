@@ -1,17 +1,10 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
-import datetime
-import json
+
 
 # Cargar variables de entorno desde el archivo .env
 load_dotenv()
-
-# Obtener la fecha actual en el formato requerido
-CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-", "_")
-
-# Directorio donde están los archivos de datos con base en la fecha actual
-DATA_DIR = f'./data/{CURRENT_DATE}'
 
 # Obtener credenciales y datos de conexión de Redshift
 REDSHIFT_HOST = os.getenv("REDSHIFT_HOST")
@@ -33,29 +26,34 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 
 cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
-conn.commit()  # Hacer commit del cambio de search_path
+conn.commit()
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
 
-# Función para extraer las condiciones climáticas de los archivos
+# Función para obtener las condiciones climáticas desde la tabla de staging
 
 
-def get_conditions_from_files():
+def get_conditions_from_staging():
     conditions = set()  # Usamos un set para evitar duplicados
 
-    # Recorrer todos los archivos .txt en el directorio
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith('.txt'):
-            file_path = os.path.join(DATA_DIR, filename)
-            # Abrir y leer el archivo
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                condition_text = data['current']['condition']['text']
-                condition_icon = data['current']['condition']['icon']
-                condition_code = data['current']['condition']['code']
-                # Añadir la condición si los campos no están vacíos
-                if condition_text and condition_icon and condition_code:
-                    conditions.add((condition_text, condition_icon, condition_code))
+    # Consulta para obtener las condiciones insertadas en los últimos 30 minutos
+    query = """
+    SELECT DISTINCT condition_text, condition_icon, condition_code
+    FROM weather_staging
+    WHERE created_at >= dateadd(minute, -30, GETDATE());
+    """
+
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    # Añadir las condiciones al set
+    for row in results:
+        condition_text = row[0]
+        condition_icon = row[1]
+        condition_code = row[2]
+
+        if condition_text and condition_icon and condition_code:
+            conditions.add((condition_text, condition_icon, condition_code))
 
     return conditions
 
@@ -78,22 +76,21 @@ def insert_conditions_into_condition_dim(conditions):
             INSERT INTO condition_dim (condition_text, condition_icon, condition_code)
             VALUES (%s, %s, %s)
             """, (condition_text, condition_icon, condition_code))
-            print(
-                f"Condición insertada: {condition_text} (Código: {condition_code})"
-                )
+            print(f"Condición insertada: {condition_text} (Código: {condition_code})")
         else:
-            print(
-                f"Condición ya existente: {condition_text} (Código: {condition_code})"
-                )
+            print(f"Condición ya existente: {condition_text} (Código: {condition_code})")
 
     # Hacer commit para guardar los cambios
     conn.commit()
 
 
 if __name__ == "__main__":
-    conditions = get_conditions_from_files()
-    insert_conditions_into_condition_dim(conditions)
-    print("Proceso de carga de condiciones completado.")
+    conditions = get_conditions_from_staging()
+    if conditions:
+        insert_conditions_into_condition_dim(conditions)
+        print("Proceso de carga de condiciones completado.")
+    else:
+        print("No se encontraron nuevas condiciones en los últimos 30 minutos.")
 
 # Cerrar la conexión
 cursor.close()

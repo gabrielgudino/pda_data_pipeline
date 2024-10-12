@@ -33,6 +33,7 @@ def extract_weather_data(location):
     response = requests.get(url, headers=headers)
     data = response.json()
 
+    # Verificar si 'location' y 'current' existen en la respuesta
     location_data = data['location']
     current_data = data['current']
 
@@ -43,15 +44,15 @@ def extract_weather_data(location):
         location_data['localtime_epoch'], location_data['localtime'],
         current_data['last_updated_epoch'], current_data['last_updated'],
         current_data['temp_c'], current_data['temp_f'], current_data['is_day'],
-        current_data['condition']['text'], current_data['wind_mph'],
-        current_data['wind_kph'], current_data['wind_degree'],
-        current_data['wind_dir'], current_data['pressure_mb'],
-        current_data['precip_mm'], current_data['humidity'],
-        current_data['cloud'], current_data['feelslike_c'],
-        current_data['feelslike_f'], current_data['dewpoint_c'],
-        current_data['dewpoint_f'], current_data['vis_km'],
-        current_data['vis_miles'], current_data['uv'],
-        current_data['gust_mph'], current_data['gust_kph']
+        current_data['condition']['text'], current_data['condition']['icon'],
+        current_data['condition']['code'],
+        current_data['wind_mph'], current_data['wind_kph'], current_data['wind_degree'],
+        current_data['wind_dir'], current_data['pressure_mb'], current_data['pressure_in'],  # pressure_in agregado
+        current_data['precip_mm'], current_data['precip_in'], current_data['humidity'], current_data['cloud'],
+        current_data['feelslike_c'], current_data['feelslike_f'], current_data['windchill_c'], 
+        current_data['windchill_f'], current_data['heatindex_c'], current_data['heatindex_f'],
+        current_data['dewpoint_c'], current_data['dewpoint_f'], current_data['vis_km'],
+        current_data['vis_miles'], current_data['uv'], current_data['gust_mph'], current_data['gust_kph']
     )
 
     return extracted_data
@@ -70,17 +71,20 @@ def load_weather_data_to_redshift(extracted_data):
 
     insert_query = f"""
     INSERT INTO "{REDSHIFT_SCHEMA}".weather_staging (
-        location_name, region, country, lat, lon, tz_id,
-        localtime_epoch, local_time, last_updated_epoch,
-        last_updated, temp_c, temp_f, is_day, condition_text,
-        wind_mph, wind_kph, wind_degree, wind_dir, pressure_mb,
-        precip_mm, humidity, cloud, feelslike_c, feelslike_f,
-        dewpoint_c, dewpoint_f, visibility_km, visibility_miles,
-        uv_index, gust_mph, gust_kph, inserted_at
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+    location_name, region, country, lat, lon, tz_id,
+    localtime_epoch, local_time, last_updated_epoch,
+    last_updated, temp_c, temp_f, is_day, condition_text,
+    condition_icon, condition_code, wind_mph, wind_kph, wind_degree,
+    wind_dir, pressure_mb, pressure_in, precip_mm, precip_in, humidity, cloud,
+    feelslike_c, feelslike_f, windchill_c, windchill_f, heatindex_c, heatindex_f,
+    dewpoint_c, dewpoint_f, visibility_km, visibility_miles, uv_index,
+    gust_mph, gust_kph, created_at
+    ) 
+    VALUES (
     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-    %s, %s, %s, %s, %s, %s, %s, GETDATE()
-    )
+    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, GETDATE()
+    );
     """
 
     cursor.execute(insert_query, extracted_data)
@@ -89,12 +93,13 @@ def load_weather_data_to_redshift(extracted_data):
     conn.close()
 
 
+
 # Función que ejecuta todo el proceso
 def run_etl(locations):
     for location in locations:
         extracted_data = extract_weather_data(location)
         load_weather_data_to_redshift(extracted_data)
-        print(f"Datos meteorológicos para {location} insertados en Redshift.")
+        print(f"Datos meteorológicos para {location} procesados.")
 
 
 if __name__ == "__main__":
@@ -105,5 +110,6 @@ if __name__ == "__main__":
         "Willemstad", "Madrid", "Moscow", "Auckland", "Casablanca", "Sydney"
     ]
 
+    
     # Ejecutar el ETL
     run_etl(locations)

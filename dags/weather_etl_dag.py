@@ -16,7 +16,7 @@ with DAG(
     'etl_dag',
     default_args=default_args,
     description='ETL para cargar datos en Redshift',
-    schedule_interval='*/10 * * * *',  # Corre cada 10 minutos
+    schedule_interval='*/15 * * * *',  # Corre cada 10 minutos
     catchup=False,
 ) as dag:
 

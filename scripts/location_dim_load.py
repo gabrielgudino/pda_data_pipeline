@@ -1,17 +1,10 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
-import datetime
-import json
+
 
 # Cargar variables de entorno desde el archivo .env
 load_dotenv()
-
-# Obtener la fecha actual en el formato requerido
-CURRENT_DATE = datetime.datetime.now().strftime("%Y-%m-%d").replace("-", "_")
-
-# Directorio donde están los archivos de datos con base en la fecha actual
-DATA_DIR = f'./data/{CURRENT_DATE}'
 
 # Obtener credenciales y datos de conexión de Redshift
 REDSHIFT_HOST = os.getenv("REDSHIFT_HOST")
@@ -33,34 +26,37 @@ conn = psycopg2.connect(
 cursor = conn.cursor()
 
 cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
-conn.commit()  # Hacer commit del cambio de search_path
+conn.commit()
 print(f"Esquema establecido a: {REDSHIFT_SCHEMA}")
 
 
-# Función para extraer las ubicaciones de los archivos
+# Función para obtener las ubicaciones únicas desde la tabla de staging
 
 
-def get_locations_from_files():
+def get_locations_from_staging():
     locations = set()  # Usamos un set para evitar duplicados
 
-    # Recorrer todos los archivos .txt en el directorio
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith('.txt'):
-            file_path = os.path.join(DATA_DIR, filename)
-            # Abrir y leer el archivo
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-                location_name = data['location']['name']
-                region = data['location'].get('region', location_name)
-                # Verificar si el campo region está vacío o es nulo
-                if not region:
-                    region = location_name
-                lat = data['location']['lat']
-                lon = data['location']['lon']
-                tz_id = data['location']['tz_id']
-                # Añadir la ubicación si no está vacía
-                if location_name:
-                    locations.add((location_name, region, lat, lon, tz_id))
+    # Consulta para obtener las ubicaciones insertadas en los últimos 30 minutos
+    query = """
+    SELECT DISTINCT location_name, COALESCE(NULLIF(region, ''), location_name) AS region,
+    lat, lon, tz_id
+    FROM weather_staging
+    WHERE created_at >= dateadd(minute, -30, GETDATE());
+    """
+
+    cursor.execute(query)
+    results = cursor.fetchall()
+
+    # Añadir las ubicaciones al set
+    for row in results:
+        location_name = row[0]
+        region = row[1] or location_name  # Si no hay región, usar el nombre de la ubicación
+        lat = row[2]
+        lon = row[3]
+        tz_id = row[4]
+
+        if location_name:
+            locations.add((location_name, region, lat, lon, tz_id))
 
     return locations
 
@@ -93,18 +89,20 @@ def insert_locations_into_location_dim(locations):
             else:
                 print(f"Ubicación ya existente: {location_name} (Región: {region})")
         else:
-            print(f"""
-                  Región no encontrada para la ubicación {location_name}.
-                  Inserta la región primero: {region}""")
+            print(f"Región no encontrada para la ubicación {location_name}. Inserta la región primero: {region}")
 
     # Hacer commit para guardar los cambios
     conn.commit()
 
 
+# Proceso principal
 if __name__ == "__main__":
-    locations = get_locations_from_files()
-    insert_locations_into_location_dim(locations)
-    print("Proceso de carga de ubicaciones completado.")
+    locations = get_locations_from_staging()
+    if locations:
+        insert_locations_into_location_dim(locations)
+        print("Proceso de carga de ubicaciones completado.")
+    else:
+        print("No se encontraron ubicaciones nuevas en los últimos 30 minutos.")
 
 # Cerrar la conexión
 cursor.close()
