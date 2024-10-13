@@ -28,5 +28,8 @@ jobs:
         pip install -r requirements_test.txt
 
     - name: Run tests
+      env:
+        API_HOST: ${{ secrets.API_HOST }}
+        API_KEY: ${{ secrets.API_KEY }}
       run: |
         pytest tests/
