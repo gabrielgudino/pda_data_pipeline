@@ -78,6 +78,7 @@ Se gestionan claves y URL de la API mediante **GitHub Secrets**, asegurando que 
 
 
 ## 8. Instrucciones para Ejecutar el Proyecto
+Tener en cuenta que los comandos que se indican a continuación son para ser corridos desde la terminal.
 
 1. **Clonar el repositorio**:
    ```bash
@@ -85,33 +86,33 @@ Se gestionan claves y URL de la API mediante **GitHub Secrets**, asegurando que 
    cd pda_data_pipeline
 
 2. **Agregar credenciales al repositorio local**:
-    Pegar el archivo .env el cual tiene las credenciales a ser utilizadas.
+    Pegar el archivo .env en la raíz del directorio del repositorio, ya que contiene las credenciales que se utilizarán.
 
-3. **Habilitar permisos en el directorio logs/**:
-    ```bash
-    sudo chmod -R 777 ./logs
-
-De esta forma la aplicación podrá interactuar con este espacio en nuestra máquina.
-
-4. **Crear el modelo relacional en Redshift**:
-    ```bash
-    python scripts/relational_model_creation.py
-
-Este script ejecutara las sentencias DDL guardadas dentro del directorio
-sql/ y llamará al script date_dim_load.py para que cargue la dimensión **date**.
-
-5. **Levantar la aplicación/pipeline**:
+3. **Crear las imágenes**:
     ```bash
     docker-compose build
+    
+4. **Levantar los contenedores que van a correr la aplicación**:
+    ```bash
     docker-compose up -d
+
+5. **Crear el modelo relacional en Redshift**:
+    ```bash
+    docker-compose exec airflow-worker python /opt/airflow/scripts/relational_model_creation.py
+
+Este script ejecutara las sentencias DDL guardadas dentro del directorio sql/ y llamará al script date_dim_load.py para que cargue la dimensión **date**.
+Además no es necesario descargar ninguna libería ya que este comando lo corre desde el contenedor donde está instalado todo lo necesario.
 
 6. **Acceder a Airflow**:
 En el navegador ponemos http://localhost:8080/login/
     user:airflow
     pass:airflow
-Luego habilitamos el dag que nos aparece para que pueda correr.
 
-7. **Borrar los contenedores**:
+Luego habilitamos el dag que nos aparece para que pueda correr. Esto se hace clickeando el boton a la izquierda
+del DAG llamado "etl_dag", el cual al apoyar el cursor muestra la leyenda "Pause/Unpause DAG". Está configurada 
+la imagen de Airflow para que no se carguen los DAGs de ejemplo.
+
+7. **Borrar/apagar los contenedores**:
 Una vez que no queramos usar mas la aplicación el siguiente comando 
 eliminará todos los contenedores creados. Si solo queremos apagarlos 
 obviemos el comando "-v".
