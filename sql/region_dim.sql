@@ -1,4 +1,4 @@
-CREATE TABLE region_dim (
+CREATE TABLE IF NOT EXISTS region_dim (
     region_id BIGINT IDENTITY(1,1), 
     region_name VARCHAR(255),
     country_id BIGINT NOT NULL, 

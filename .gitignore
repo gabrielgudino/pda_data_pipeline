@@ -1,4 +1,5 @@
 /pdap
+/pdap_test
 .env
 /drafts
 data/*
