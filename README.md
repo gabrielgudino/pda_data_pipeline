@@ -70,52 +70,121 @@ En el directorio `tests/` se encuentran los archivos que ejecutaran los tests de
     - La estructura de los datos obtenidos (nombre de la ubicación, temperatura, condiciones del viento, etc.) se compara con una estructura de tipos de datos predefinida que coincide con la tabla en Redshift.
     - Si los tipos de datos coinciden, se valida que los datos son correctos; de lo contrario, se lanza una excepción indicando el tipo de error.
 Este test asegura que los datos recibidos desde la API sean compatibles con el esquema de la base de datos, ayudando a prevenir problemas de carga.
-- **`test_pep8.py`**: Este script implementa un **test de conformidad con PEP8** utilizando la herramienta **flake8**. La función `test_pep8_conformance()` ejecuta un comando que verifica que todo el código en el repositorio cumpla con las reglas de estilo PEP8, con una longitud máxima de línea de 88 caracteres. Algunos directorios como `pdap` y `drafts` están excluidos de la verificación. Si el código no cumple con las reglas, el test falla y se imprime una lista de errores de estilo. Este test es esencial para mantener una calidad de código consistente en el proyecto.
+- **`test_pep8.py`**: Este script implementa un **test de conformidad con PEP8** utilizando la herramienta **flake8**. La función `test_pep8_conformance()` ejecuta un comando que verifica que todo el código en el repositorio cumpla con las reglas de estilo PEP8, con una longitud máxima de línea de 88 caracteres. Algunos directorios como `pdap`, `pdap_test` y `drafts` están excluidos de la verificación. Si el código no cumple con las reglas, el test falla y se imprime una lista de errores de estilo. Este test es esencial para mantener una calidad de código consistente en el proyecto.
 
 
 ## 7. Uso de Variables Sensibles
 Se gestionan claves y URL de la API mediante **GitHub Secrets**, asegurando que las variables sensibles, como `API_HOST` y `API_KEY`, se mantengan seguras y no se expongan en el código y puedan ser utilizadas en los tests.
 
+## 8. Modelado dimensional
 
-## 8. Instrucciones para Ejecutar el Proyecto
+![Diagrama del Modelo](./assets/modelo_dimensional_weather.png)
+
+En este gráfico podemos apreciar las tablas y sus relaciones del modelo. Se buscó normalizar lo mas posible a efectos de ejercitar este concepto, no obstante se podría haber evitado
+la dimensión country. Presentamos una query de ejemplo:
+```SQL
+SELECT
+    d.date AS observation_date,
+    c.country_name AS country,
+    r.region_name AS region,
+    l.location_name AS location,
+    w.temp_c AS temperature_celsius,
+    w.temp_f AS temperature_fahrenheit,
+    cond.condition_text AS weather_condition,
+    cond.condition_icon AS weather_icon_url,
+    cond.condition_code AS condition_code,
+    w.humidity,
+    w.wind_mph,
+    w.wind_kph,
+    w.wind_dir,
+    w.feelslike_c AS feels_like_celsius,
+    w.feelslike_f AS feels_like_fahrenheit,
+    w.uv,
+    w.vis_km AS visibility_kilometers,
+    w.vis_miles AS visibility_miles
+FROM
+    "2024_gabriel_medardo_gudino_schema".weather_fact w
+JOIN
+    "2024_gabriel_medardo_gudino_schema".date_dim d ON w.date_id = d.date_id
+JOIN
+    "2024_gabriel_medardo_gudino_schema".location_dim l ON w.location_id = l.location_id
+JOIN
+    "2024_gabriel_medardo_gudino_schema".region_dim r ON l.region_id = r.region_id
+JOIN
+    "2024_gabriel_medardo_gudino_schema".country_dim c ON r.country_id = c.country_id
+JOIN
+    "2024_gabriel_medardo_gudino_schema".condition_dim cond ON w.condition_id = cond.condition_id
+WHERE
+    d.year = 2024
+    AND d."day" = 25
+    AND d."month" = 10    
+    AND c.country_name = 'Argentina'
+    AND l.location_name = 'Buenos Aires'
+ORDER BY
+    d.date DESC;
+```
+Cuya salida fue:
+
+![Respuesta Query](./assets/query.png)
+
+## 9. Instrucciones para Ejecutar el Proyecto
 Tener en cuenta que los comandos que se indican a continuación son para ser corridos desde la terminal.
 
 1. **Clonar el repositorio**:
    ```bash
    git clone https://github.com/gabrielgudino/pda_data_pipeline.git
    cd pda_data_pipeline
+   ```
 
 2. **Agregar credenciales al repositorio local**:
-    Pegar el archivo .env en la raíz del directorio del repositorio, ya que contiene las credenciales que se utilizarán.
+Pegar el archivo .env en la raíz del directorio del repositorio, ya que contiene las credenciales que se utilizarán.
 
 3. **Crear las imágenes**:
     ```bash
     docker-compose build
+    ```
     
 4. **Levantar los contenedores que van a correr la aplicación**:
     ```bash
     docker-compose up -d
+    ```
 
-5. **Crear el modelo relacional en Redshift**:
-    ```bash
-    docker-compose exec airflow-worker python /opt/airflow/scripts/relational_model_creation.py
-
-Este script ejecutara las sentencias DDL guardadas dentro del directorio sql/ y llamará al script date_dim_load.py para que cargue la dimensión **date**.
-Además no es necesario descargar ninguna libería ya que este comando lo corre desde el contenedor donde está instalado todo lo necesario.
-
-6. **Acceder a Airflow**:
+5. **Acceder a Airflow**:
 En el navegador ponemos http://localhost:8080/login/
     user:airflow
     pass:airflow
 
-Luego habilitamos el dag que nos aparece para que pueda correr. Esto se hace clickeando el boton a la izquierda
-del DAG llamado "etl_dag", el cual al apoyar el cursor muestra la leyenda "Pause/Unpause DAG". Está configurada 
-la imagen de Airflow para que no se carguen los DAGs de ejemplo.
+6. **Crear el modelo relacional en Redshift via Airflow**:
+Habilitamos el DAG que se llama "create_redshift_model". Esto se hace clickeando el boton a la izquierda
+del mismo, el cual al apoyar el cursor muestra la leyenda "Pause/Unpause DAG". Luego del lado derecho presionamos
+el boton que se llama "trigger DAG". Finalizado el proceso podemos pausar el DAG.
+Está configurada la imagen de Airflow para que no se carguen los DAGs de ejemplo.
 
-7. **Borrar/apagar los contenedores**:
-Una vez que no queramos usar mas la aplicación el siguiente comando 
+7. **Iniciar el ETL**:
+Luego de crear el modelo hacemos lo mismo pero en el DAG llamado "etl_dag".
+
+8. **Borrar/apagar los contenedores**:
+    ```bash
+    docker-compose down -v
+    ```
+
+Una vez que no queramos usar mas la aplicación el comando anterior
 eliminará todos los contenedores creados. Si solo queremos apagarlos 
 obviemos el comando "-v".
 
+9. **Ambiente virtual para evaluar localmente los test**:
+En caso de tener la intención de correr los test de forma local podemos recrear el ambiente de test con los siguientes comandos:
+
     ```bash
-    docker-compose down -v
+    python3 -m venv pdap_test
+    source pdap_test/bin/activate
+    pip install -r requirements_test.txt
+    ```
+
+La primera linea va a crear el ambiente, la segunda linea lo va a activar y la tercera se va a encargar de instalar las librerias
+necesarias para correr los test de forma manual y local. 
+
+Para correr los tests usamos el comando: 
+    ```bash
+    pytest tests/
+    ```
