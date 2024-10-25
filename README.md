@@ -39,10 +39,15 @@ Se implementó un pipeline de **Integración Continua (CI)** en GitHub Actions q
 ### Directorio `scripts/`
 
 En el directorio `scripts/` se encuentran los archivos principales que gestionan la lógica de extracción, transformación y carga de datos como así también la creación del modelo
-dimensional. Los scripts son:
+dimensional. Dentro de `scripts`, existe un subdirectorio `model_scripts/` que contiene scripts de creación específicos para cada tabla en el modelo. Los scripts son:
 
-- **`relational_model_creation.py`**: Este script se encarga de crear y configurar las tablas en **Amazon Redshift** y de cargar los datos en la tabla `date_dim`. Primero, se cargan las variables de conexión desde un archivo `.env` utilizando la librería `dotenv`. Luego, se establece una conexión con la base de datos Redshift utilizando `psycopg2`. El script ejecuta los archivos SQL en el orden correcto desde un directorio específico, para crear las dimensiones (`country_dim`, `region_dim`, `location_dim`, `condition_dim`, `date_dim`) y la tabla de hechos `weather_fact`. Finalmente, utiliza `subprocess` para ejecutar un script de Python separado (`date_dim_load.py`), que carga los datos en la tabla `date_dim` después de la creación del esquema.
-- **`relational_model_creation.py`**: Este script genera y carga los datos de la **dimensión de fecha** (`date_dim`) en Amazon Redshift. Primero, se establecen las conexiones con la base de datos utilizando las credenciales almacenadas en las variables de entorno, gestionadas por `dotenv`. A continuación, la función `generate_date_data()` crea un rango de fechas desde el 1 de enero de 2024 hasta el 31 de diciembre de 2025, calculando atributos como el día de la semana, el nombre del día, la semana del año, el trimestre y si es fin de semana. Luego, la función `insert_date_data()` inserta estos registros en la tabla `date_dim` en Redshift. Una vez completada la inserción, se cierra la conexión a la base de datos.
+- **Directorio `model_scripts/`**: Aquí se encuentran los scripts de creación de cada tabla dentro del modelo dimensional de Redshift. Ejemplos de scripts dentro de este directorio son:
+  - `country_dim_creation.py`: Crea la tabla `country_dim`.
+  - `region_dim_creation.py`: Crea la tabla `region_dim`.
+  - `location_dim_creation.py`: Crea la tabla `location_dim`.
+  - `condition_dim_creation.py`: Crea la tabla `condition_dim`.
+  - `weather_fact_creation.py`: Crea la tabla `weather_fact`.
+  - `weather_staging_creation.py`: Crea la tabla de staging `weather_staging`.
 - **`ingest.py`**: Este script realiza el proceso de ingesta de datos meteorológicos en Amazon Redshift. Primero, establece una conexión a Redshift utilizando las credenciales almacenadas en un archivo `.env` y carga las variables necesarias como el `API_HOST` y `API_KEY`. La función `extract_weather_data()` realiza la extracción de datos desde la API de WeatherAPI para una lista de ubicaciones y retorna un conjunto de datos relevantes como temperatura, humedad, condiciones del viento y más. Posteriormente, la función `load_weather_data_to_redshift()` inserta los datos extraídos en la tabla de staging `weather_staging` en Redshift. El script principal recorre varias ubicaciones, ejecutando todo el proceso de extracción y carga para cada una, procesando y almacenando los datos meteorológicos en la base de datos.
 - **`country_dim_load.py`**: Este script extrae los países únicos desde la tabla de staging `weather_staging` en Redshift y los inserta en la tabla `country_dim`. Primero, establece una conexión a Redshift usando las credenciales definidas en un archivo `.env`. La función `get_countries_from_staging()` consulta los países registrados en los últimos 30 minutos desde `weather_staging`. Luego, la función `insert_countries_into_country_dim()` inserta esos países en la tabla `country_dim`, evitando duplicados mediante una verificación previa. Finalmente, el script principal ejecuta el proceso y, si no hay países nuevos, muestra un mensaje indicándolo. Después de la ejecución, se cierra la conexión a la base de datos.
 - **`region_dim_load.py`**: Este script extrae las regiones y países únicos desde la tabla de staging `weather_staging` en Redshift y los inserta en la tabla `region_dim`. Primero, establece una conexión a Redshift utilizando las credenciales almacenadas en un archivo `.env`. La función `get_regions_from_staging()` consulta las regiones y países registrados en los últimos 30 minutos. Luego, la función `insert_regions_into_region_dim()` inserta las regiones en la tabla `region_dim`, asegurándose de que el país correspondiente ya exista en la tabla `country_dim`. Si la región ya existe, no se duplica; de lo contrario, se inserta junto con la referencia al país correspondiente. Finalmente, el script cierra la conexión después de ejecutar el proceso.
@@ -54,6 +59,7 @@ dimensional. Los scripts son:
 
 En el directorio `dags/` se encuentra el archivo que configura la orquestación que ejecutará Airflow. El script es:
 
+- **`create_redshift_model_dag.py`**: Este DAG permite crear el modelo dimensional en Redshift. Contiene tareas para ejecutar cada script de creación de tabla desde `model_scripts/` y la carga de datos en `date_dim`. Este DAG se ejecuta únicamente de forma manual desde la interfaz de Airflow, permitiendo crear el modelo solo cuando sea necesario.
 - **`weather_etl_dag.py`**: Este DAG de **Airflow** llamado `etl_dag` está diseñado para orquestar el proceso ETL (Extracción, Transformación y Carga) en **Redshift**. Se ejecuta cada 4 horas y utiliza operadores de Python para ejecutar scripts que realizan diferentes tareas de carga de datos.
     - La función `run_script()` se encarga de ejecutar scripts Python específicos, ubicados en el directorio `/opt/airflow/scripts/`.
     - El DAG está compuesto por varias tareas (`PythonOperator`), cada una de las cuales ejecuta un script. Por ejemplo, `ingest_data` ejecuta `ingest.py` para extraer los datos desde la API, y los operadores como `load_country_dim`, `load_region_dim`, etc., se encargan de cargar las diferentes dimensiones (`country_dim`, `region_dim`, `location_dim`, `condition_dim`) y la tabla de hechos `weather_fact`.
@@ -78,7 +84,7 @@ Se gestionan claves y URL de la API mediante **GitHub Secrets**, asegurando que 
 
 ## 8. Modelado dimensional
 
-![Diagrama del Modelo](./assets/modelo_dimensional_weather.png)
+![Diagrama del Modelo](./images/modelo_dimensional_weather.png)
 
 En este gráfico podemos apreciar las tablas y sus relaciones del modelo. Se buscó normalizar lo mas posible a efectos de ejercitar este concepto, no obstante se podría haber evitado
 la dimensión country. Presentamos una query de ejemplo:
@@ -125,7 +131,7 @@ ORDER BY
 ```
 Cuya salida fue:
 
-![Respuesta Query](./assets/query.png)
+![Respuesta Query](./images/query.png)
 
 ## 9. Instrucciones para Ejecutar el Proyecto
 Tener en cuenta que los comandos que se indican a continuación son para ser corridos desde la terminal.
