@@ -1,4 +1,4 @@
-CREATE TABLE date_dim (
+CREATE TABLE IF NOT EXISTS date_dim (
     date_id BIGINT IDENTITY(1,1), 
     date DATE NOT NULL,             -- Fecha en formato DATE
     day INT,                        -- Día del mes (1-31)

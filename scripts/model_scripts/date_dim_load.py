@@ -18,13 +18,11 @@ cursor = conn.cursor()
 
 # Configurar el esquema
 REDSHIFT_SCHEMA = os.getenv("REDSHIFT_SCHEMA", "public")
-
 cursor.execute(f'SET search_path TO "{REDSHIFT_SCHEMA}";')
 conn.commit()
 
+
 # Función para generar los datos de la dimensión de fecha (date_dim)
-
-
 def generate_date_data(start_date, end_date):
     date_data = []
     current_date = start_date
@@ -45,55 +43,53 @@ def generate_date_data(start_date, end_date):
             'is_weekend': is_weekend,
             'created_at': datetime.datetime.now()  # Fecha de creación
         })
-
-        # Avanzar al siguiente día
         current_date += datetime.timedelta(days=1)
-
     return date_data
 
+
+# Función para verificar si la tabla está vacía
+def is_table_empty():
+    cursor.execute("SELECT COUNT(*) FROM date_dim;")
+    result = cursor.fetchone()
+    return result[0] == 0
+
+
 # Función para insertar los datos en la tabla date_dim
-
-
 def insert_date_data(date_data):
-    for date_record in date_data:
-        cursor.execute("""
-            INSERT INTO date_dim (date, day, day_of_week, day_name,
-            week, month, month_name, quarter, year, is_weekend, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            date_record['date'],
-            date_record['day'],
-            date_record['day_of_week'],
-            date_record['day_name'],
-            date_record['week'],
-            date_record['month'],
-            date_record['month_name'],
-            date_record['quarter'],
-            date_record['year'],
-            date_record['is_weekend'],
-            date_record['created_at']
-        ))
-    conn.commit()
+    if is_table_empty():
+        for date_record in date_data:
+            cursor.execute("""
+                INSERT INTO date_dim (date, day, day_of_week, day_name,
+                week, month, month_name, quarter, year, is_weekend, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                date_record['date'],
+                date_record['day'],
+                date_record['day_of_week'],
+                date_record['day_name'],
+                date_record['week'],
+                date_record['month'],
+                date_record['month_name'],
+                date_record['quarter'],
+                date_record['year'],
+                date_record['is_weekend'],
+                date_record['created_at']
+            ))
+        conn.commit()
+        print("Datos de la dimensión de fecha cargados exitosamente.")
+    else:
+        print("La tabla date_dim ya contiene datos. No se realizó ninguna carga.")
 
 
 # Parámetros de tiempo: desde enero 2024 hasta diciembre 2025
-
-
 start_date = datetime.datetime(2024, 1, 1)
-
-
 end_date = datetime.datetime(2024, 12, 31)
 
-
 # Generar los datos de la dimensión de fecha
-
-
 date_data = generate_date_data(start_date, end_date)
-
 
 # Insertar los datos en la tabla date_dim
 insert_date_data(date_data)
-print("Datos de la dimensión de fecha cargados exitosamente.")
 
 # Cerrar la conexión
 cursor.close()

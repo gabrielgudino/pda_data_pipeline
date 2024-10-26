@@ -1,4 +1,4 @@
-CREATE TABLE weather_fact (
+CREATE TABLE IF NOT EXISTS weather_fact (
     weather_id BIGINT IDENTITY(1,1), 
     location_id BIGINT NOT NULL,              
     condition_id BIGINT NOT NULL,    
